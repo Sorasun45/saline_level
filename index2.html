@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามปริมาณน้ำเกลือ</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --accent: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+        }
+        
+        h1 {
+            color: var(--dark);
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: var(--primary);
+        }
+        
+        .value-display {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .unit {
+            font-size: 1.5rem;
+            color: #7f8c8d;
+        }
+        
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            margin: 20px 0;
+        }
+        
+        .gauge {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .bar-graph {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 150px;
+            margin-top: 20px;
+            padding: 0 10px;
+        }
+        
+        .bar {
+            width: 40px;
+            background: linear-gradient(to top, var(--primary), var(--secondary));
+            border-radius: 5px 5px 0 0;
+            transition: height 0.5s ease;
+            position: relative;
+        }
+        
+        .bar-label {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #connectBtn {
+            background: var(--primary);
+            color: white;
+        }
+        
+        #connectBtn:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+        
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+        }
+        
+        .btn-secondary:hover {
+            background: #dfe6e9;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        
+        .status.connected {
+            background: rgba(46, 204, 113, 0.2);
+            color: var(--secondary);
+        }
+        
+        .status.disconnected {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--accent);
+        }
+        
+        .history-container {
+            margin-top: 30px;
+        }
+        
+        .history-chart {
+            width: 100%;
+            height: 200px;
+            background: white;
+            border-radius: 10px;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .history-line {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            transform-origin: left;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ระบบติดตามปริมาณน้ำเกลือ</h1>
+            <p class="subtitle">ESP32-C3 Foot Pressure Monitor</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h2 class="card-title">
+                    <i>📊</i> ปริมาณน้ำเกลือปัจจุบัน
+                </h2>
+                <div class="value-display">
+                    <span id="value">0</span>
+                    <span class="unit">ml</span>
+                </div>
+                
+                <div class="gauge-container">
+                    <canvas id="gauge" class="gauge"></canvas>
+                </div>
+                
+                <div class="status disconnected" id="status">
+                    ไม่ได้เชื่อมต่อกับอุปกรณ์
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i>📈</i> กราฟแสดงแนวโน้ม
+                </h2>
+                
+                <div class="bar-graph" id="barGraph">
+                    <!-- Bars will be generated by JavaScript -->
+                </div>
+                
+                <div class="controls">
+                    <button id="connectBtn">
+                        <i>🔗</i> เชื่อมต่อ BLE
+                    </button>
+                    <button class="btn-secondary" id="resetBtn">
+                        <i>🔄</i> รีเซ็ตข้อมูล
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card history-container">
+            <h2 class="card-title">
+                <i>🕒</i> ประวัติการวัด
+            </h2>
+            <div class="history-chart" id="historyChart">
+                <!-- History chart will be drawn by JavaScript -->
+            </div>
+        </div>
+        
+        <footer>
+            <p>พัฒนาโดยใช้ ESP32-C3 | ข้อมูลสำหรับการแพทย์เท่านั้น</p>
+        </footer>
+    </div>
+
+    <script>
+        const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+        
+        // Initialize gauge
+        const gaugeCanvas = document.getElementById('gauge');
+        const gaugeCtx = gaugeCanvas.getContext('2d');
+        
+        // Initialize history data
+        let historyData = [];
+        const maxHistoryPoints = 20;
+        
+        // Initialize bar graph
+        const barGraph = document.getElementById('barGraph');
+        const bars = [];
+        
+        // Create initial bars
+        for (let i = 0; i < 7; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            const label = document.createElement('div');
+            label.className = 'bar-label';
+            label.textContent = `Day ${i+1}`;
+            bar.appendChild(label);
+            barGraph.appendChild(bar);
+            bars.push(bar);
+            
+            // Set random initial height for demo
+            bar.style.height = `${Math.random() * 80 + 10}px`;
+        }
+        
+        function resizeGauge() {
+            gaugeCanvas.width = gaugeCanvas.offsetWidth;
+            gaugeCanvas.height = gaugeCanvas.offsetHeight;
+            drawGauge(0);
+        }
+        
+        function drawGauge(value) {
+            const width = gaugeCanvas.width;
+            const height = gaugeCanvas.height;
+            const centerX = width / 2;
+            const centerY = height;
+            const radius = Math.min(width, height * 1.5) * 0.8;
+            
+            gaugeCtx.clearRect(0, 0, width, height);
+            
+            // Draw gauge background
+            gaugeCtx.beginPath();
+            gaugeCtx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
+            gaugeCtx.strokeStyle = '#ecf0f1';
+            gaugeCtx.lineWidth = 20;
+            gaugeCtx.stroke();
+            
+            // Calculate angle based on value (0-100%)
+            const maxValue = 500; // Assume max value is 500ml
+            const percentage = Math.min(value / maxValue, 1);
+            const angle = Math.PI + (Math.PI * percentage);
+            
+            // Draw gauge value
+            gaugeCtx.beginPath();
+            gaugeCtx.arc(centerX, centerY, radius, Math.PI, angle);
+            gaugeCtx.strokeStyle = getColorForValue(percentage);
+            gaugeCtx.lineWidth = 20;
+            gaugeCtx.stroke();
+            
+            // Draw needle
+            const needleLength = radius * 0.7;
+            const needleAngle = Math.PI + (Math.PI * percentage);
+            const needleX = centerX + Math.cos(needleAngle) * needleLength;
+            const needleY = centerY + Math.sin(needleAngle) * needleLength;
+            
+            gaugeCtx.beginPath();
+            gaugeCtx.moveTo(centerX, centerY);
+            gaugeCtx.lineTo(needleX, needleY);
+            gaugeCtx.strokeStyle = '#2c3e50';
+            gaugeCtx.lineWidth = 3;
+            gaugeCtx.stroke();
+            
+            // Draw center circle
+            gaugeCtx.beginPath();
+            gaugeCtx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+            gaugeCtx.fillStyle = '#2c3e50';
+            gaugeCtx.fill();
+            
+            // Draw value text
+            gaugeCtx.font = 'bold 24px Arial';
+            gaugeCtx.fillStyle = '#2c3e50';
+            gaugeCtx.textAlign = 'center';
+            gaugeCtx.fillText(`${value} ml`, centerX, centerY - 30);
+            
+            // Draw min and max labels
+            gaugeCtx.font = '14px Arial';
+            gaugeCtx.fillStyle = '#7f8c8d';
+            gaugeCtx.fillText('0 ml', centerX - radius + 10, centerY + 15);
+            gaugeCtx.fillText('500 ml', centerX + radius - 25, centerY + 15);
+        }
+        
+        function getColorForValue(percentage) {
+            if (percentage < 0.5) {
+                return '#2ecc71'; // Green
+            } else if (percentage < 0.8) {
+                return '#f39c12'; // Orange
+            } else {
+                return '#e74c3c'; // Red
+            }
+        }
+        
+        function updateBarGraph(value) {
+            // Shift all bars to the left
+            for (let i = 0; i < bars.length - 1; i++) {
+                const currentHeight = bars[i].style.height;
+                bars[i].style.height = bars[i+1].style.height;
+            }
+            
+            // Add new value to the last bar
+            const maxValue = 500; // Assume max value is 500ml
+            const percentage = Math.min(value / maxValue, 1);
+            const newHeight = percentage * 100;
+            bars[bars.length - 1].style.height = `${newHeight}%`;
+        }
+        
+        function updateHistory(value) {
+            historyData.push(value);
+            
+            if (historyData.length > maxHistoryPoints) {
+                historyData.shift();
+            }
+            
+            drawHistoryChart();
+        }
+        
+        function drawHistoryChart() {
+            const historyChart = document.getElementById('historyChart');
+            const width = historyChart.offsetWidth;
+            const height = historyChart.offsetHeight;
+            
+            // Clear previous chart
+            historyChart.innerHTML = '';
+            
+            if (historyData.length < 2) return;
+            
+            const maxValue = Math.max(...historyData);
+            const minValue = Math.min(...historyData);
+            const valueRange = maxValue - minValue || 1;
+            
+            const pointWidth = width / (historyData.length - 1);
+            
+            // Create the path for the line
+            const path = document.createElement('div');
+            path.className = 'history-line';
+            
+            let pathData = '';
+            
+            for (let i = 0; i < historyData.length; i++) {
+                const x = i * pointWidth;
+                const y = height - ((historyData[i] - minValue) / valueRange * (height - 20));
+                
+                if (i === 0) {
+                    pathData = `M ${x} ${y}`;
+                } else {
+                    pathData += ` L ${x} ${y}`;
+                }
+                
+                // Add point indicator
+                const point = document.createElement('div');
+                point.style.position = 'absolute';
+                point.style.left = `${x - 4}px`;
+                point.style.top = `${y - 4}px`;
+                point.style.width = '8px';
+                point.style.height = '8px';
+                point.style.borderRadius = '50%';
+                point.style.backgroundColor = getColorForValue(historyData[i] / 500);
+                historyChart.appendChild(point);
+            }
+            
+            path.style.background = 'none';
+            path.style.height = '2px';
+            historyChart.appendChild(path);
+            
+            // Use SVG for the line (simplified approach)
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            svg.style.position = "absolute";
+            svg.style.top = "0";
+            svg.style.left = "0";
+            
+            const pathElement = document.createElementNS(svgNS, "path");
+            pathElement.setAttribute("d", pathData);
+            pathElement.setAttribute("stroke", "#3498db");
+            pathElement.setAttribute("stroke-width", "2");
+            pathElement.setAttribute("fill", "none");
+            svg.appendChild(pathElement);
+            
+            historyChart.appendChild(svg);
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            resizeGauge();
+            drawGauge(0);
+            drawHistoryChart();
+        });
+        
+        window.addEventListener('resize', resizeGauge);
+        
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+                await characteristic.startNotifications();
+                
+                // Update status
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = 'เชื่อมต่อกับอุปกรณ์แล้ว';
+                statusElement.className = 'status connected';
+                
+                characteristic.addEventListener("characteristicvaluechanged", e => {
+                    const value = new TextDecoder().decode(e.target.value);
+                    const numericValue = parseInt(value) || 0;
+                    
+                    document.getElementById("value").innerText = numericValue;
+                    drawGauge(numericValue);
+                    updateBarGraph(numericValue);
+                    updateHistory(numericValue);
+                });
+
+            } catch (err) {
+                console.error(err);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ BLE:\n" + err);
+                
+                // Update status
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = 'การเชื่อมต่อล้มเหลว';
+                statusElement.className = 'status disconnected';
+            }
+        };
+        
+        // Reset button functionality
+        document.getElementById('resetBtn').onclick = () => {
+            historyData = [];
+            drawHistoryChart();
+            
+            // Reset bars to random values for demo
+            bars.forEach(bar => {
+                bar.style.height = `${Math.random() * 80 + 10}px`;
+            });
+            
+            document.getElementById("value").innerText = "0";
+            drawGauge(0);
+        };
+    </script>
+</body>
+</html>
