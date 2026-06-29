@@ -1,117 +1,181 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="th">
 <head>
-  <title>Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
-
-  <script src="./js/js-fluid-meter.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-  <style>
-    .sidebar-links li a #dashboard_logo {
-      background-color: #fff;
-      padding: 5px;
-      border-radius: 5px;
-      color: #161a2d;
-      transition: all 0.3s ease-in-out;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจสอบเวลา 9 ช่องสัญญาณ</title>
+    <!-- นำเข้า Tailwind CSS สำหรับความสวยงาม -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- นำเข้า MQTT.js สำหรับเชื่อมต่อกับ ESP32 -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
+        .digital-font { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+    </style>
 </head>
+<body class="p-4 md:p-8">
 
-<body>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <img src="images/logo.png" alt="logo" />
-      <h2>MTSs Labs.</h2>
-    </div>
-    <ul class="sidebar-links">
-      <h4>
-        <span>Main Menu</span>
-        <div class="menu-separator"></div>
-      </h4>
-      <li>
-        <a href="#">
-          <span class="material-symbols-outlined" id="dashboard_logo"> dashboard </span>Dashboard</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined"> overview </span>Overview</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined"> monitoring </span>Analytic</a>
-      </li>
-      <h4>
-        <span>General</span>
-        <div class="menu-separator"></div>
-      </h4>
-      <li>
-        <a href="#"><span class="material-symbols-outlined" id="counter_1">counter_1</span>Room 1</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined">counter_2</span>Room 2</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined">counter_3</span>Room 3</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined">counter_4</span>Room 4</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined">
-            notifications_active </span>Notifications</a>
-      </li>
-      <h4>
-        <span>Account</span>
-        <div class="menu-separator"></div>
-      </h4>
-      <li>
-        <a href="#"><span class="material-symbols-outlined"> account_circle </span>Profile</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined"> settings </span>Settings</a>
-      </li>
-      <li>
-        <a href="#"><span class="material-symbols-outlined"> logout </span>Logout</a>
-      </li>
-    </ul>
-    <div class="user-account">
-      <div class="user-profile">
-        <img src="images/profile.jpg" alt="Profile Image" />
-        <div class="user-detail">
-          <h3>Sora Sun</h3>
-          <span>Web Developer</span>
+    <div class="max-w-6xl mx-auto">
+        <!-- Header & Status -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">ระบบตรวจสอบเวลา 9 ช่องสัญญาณ</h1>
+                <p class="text-gray-500 mt-1">
+                    สถานะการเชื่อมต่อ: 
+                    <span id="mqtt-status" class="font-semibold text-red-500">กำลังเชื่อมต่อ... (Connecting)</span>
+                </p>
+            </div>
+            
+            <!-- Master Controls -->
+            <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
+                <button onclick="sendCommand('MASTER_TOGGLE')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow font-semibold transition">
+                    เริ่ม/หยุด ทั้งหมด
+                </button>
+                <button onclick="sendCommand('MASTER_RESET')" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg shadow font-semibold transition">
+                    รีเซ็ตทั้งหมด
+                </button>
+                <button id="btn-download" onclick="downloadCSV()" class="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg shadow font-semibold transition" disabled>
+                    ดาวน์โหลด CSV
+                </button>
+            </div>
         </div>
-      </div>
-    </div>
-  </aside>
-  <div class="dashbaord">
-    <div class="card_data">
-      <div class="gauge">
-        <div class="title">Gauge Saline level</div>
-        <div id="gauge-waterlevel"></div>
-      </div>
-    </div>
-    <div class="card_info">
-      <div class="info">
-        <div class="title">Dashboard</div>
-        <p>Project Name: Saline Level Monitoring System</p>
-        <p>Type: IoT</p>
-        <p>Status: In Progress</p>
-        <p>Created: 04 - 11 - 2025</p>
-        <p>Developer: Sora Sun</p>
-      </div>
-      <div class="img">
-        <img src="./images/robot.png" alt="" class="img_work">
-      </div>
-    </div>
-  </div>
 
-  <script src="./script.js"></script>
+        <!-- 9 Channels Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="channels-container">
+            <!-- Cards จะถูกสร้างด้วย JavaScript -->
+        </div>
+    </div>
 
+    <script>
+        // โครงสร้างข้อมูลสำหรับ 9 ช่อง
+        const channels = Array.from({length: 9}, (_, i) => ({
+            id: i + 1,
+            isRunning: false,
+            startTime: 0,
+            elapsedMs: 0
+        }));
+
+        // การเชื่อมต่อ MQTT (ใช้ WebSocket ของ HiveMQ)
+        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+        const topicStatus = 'sora/timer_project_v1/status';
+        const topicCmd = 'sora/timer_project_v1/cmd';
+        
+        const client = mqtt.connect(brokerUrl);
+
+        client.on('connect', () => {
+            document.getElementById('mqtt-status').innerText = 'เชื่อมต่อแล้ว (Connected)';
+            document.getElementById('mqtt-status').classList.replace('text-red-500', 'text-green-500');
+            client.subscribe(topicStatus);
+        });
+
+        client.on('message', (topic, message) => {
+            if (topic === topicStatus) {
+                try {
+                    const data = JSON.parse(message.toString());
+                    const chIndex = data.ch - 1;
+                    if (chIndex < 0 || chIndex >= 9) return;
+
+                    if (data.act === 'start') {
+                        channels[chIndex].isRunning = true;
+                        channels[chIndex].startTime = Date.now() - data.ms; // ซิงค์เวลา
+                    } else if (data.act === 'stop') {
+                        channels[chIndex].isRunning = false;
+                        channels[chIndex].elapsedMs = data.ms;
+                    } else if (data.act === 'reset') {
+                        channels[chIndex].isRunning = false;
+                        channels[chIndex].elapsedMs = 0;
+                    }
+                } catch (e) {
+                    console.error("Invalid MQTT payload", e);
+                }
+            }
+        });
+
+        // ฟังก์ชันส่งคำสั่งกลับไปหา ESP32
+        function sendCommand(cmd) {
+            client.publish(topicCmd, cmd);
+        }
+
+        // สร้าง UI Cards
+        const container = document.getElementById('channels-container');
+        channels.forEach(ch => {
+            const card = document.createElement('div');
+            card.className = "bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center";
+            card.innerHTML = `
+                <h2 class="text-xl font-bold text-gray-600 mb-2">ช่องที่ ${ch.id}</h2>
+                <div id="display-${ch.id}" class="digital-font text-4xl text-gray-800 tracking-wider mb-6">
+                    00:00:00:00:00
+                </div>
+                <div class="flex gap-2 w-full">
+                    <button onclick="sendCommand('CH_TOGGLE_${ch.id}')" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white py-2 rounded font-semibold transition">เริ่ม/หยุด</button>
+                    <button onclick="sendCommand('CH_RESET_${ch.id}')" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded font-semibold transition">รีเซ็ต</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        // ฟังก์ชันแปลงเวลา ms เป็น DD:HH:MM:SS:MS
+        function formatTime(totalMs) {
+            let totalSec = Math.floor(totalMs / 1000);
+            let hundredths = Math.floor((totalMs % 1000) / 10);
+            let sec = totalSec % 60;
+            let min = Math.floor(totalSec / 60) % 60;
+            let hr = Math.floor(totalSec / 3600) % 24;
+            let days = Math.floor(totalSec / 86400);
+
+            const pad = (num) => String(num).padStart(2, '0');
+            return `${pad(days)}:${pad(hr)}:${pad(min)}:${pad(sec)}:${pad(hundredths)}`;
+        }
+
+        // Loop อัปเดตหน้าจอ (รันอิสระจาก ESP เพื่อลดภาระ WiFi)
+        function updateUI() {
+            let anyRunning = false;
+
+            channels.forEach(ch => {
+                let currentMs = ch.elapsedMs;
+                if (ch.isRunning) {
+                    currentMs = Date.now() - ch.startTime;
+                    anyRunning = true;
+                }
+                document.getElementById(`display-${ch.id}`).innerText = formatTime(currentMs);
+            });
+
+            // ปลดล็อคปุ่มดาวน์โหลด CSV ถ้าไม่มีช่องไหนวิ่งอยู่เลย
+            const btnDownload = document.getElementById('btn-download');
+            if (anyRunning) {
+                btnDownload.disabled = true;
+                btnDownload.title = "ต้องหยุดเวลาทุกช่องก่อนดาวน์โหลด";
+            } else {
+                btnDownload.disabled = false;
+                btnDownload.title = "";
+            }
+
+            requestAnimationFrame(updateUI);
+        }
+
+        // เริ่มลูป UI
+        requestAnimationFrame(updateUI);
+
+        // ฟังก์ชันดาวน์โหลด CSV
+        function downloadCSV() {
+            let csvContent = "Channel,Time(ms),FormattedTime(DD:HH:MM:SS:MS)\n";
+            channels.forEach(ch => {
+                csvContent += `${ch.id},${ch.elapsedMs},${formatTime(ch.elapsedMs)}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `timer_report_${new Date().getTime()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert('ดาวน์โหลดไฟล์ CSV สำเร็จ!');
+        }
+    </script>
 </body>
-
 </html>
